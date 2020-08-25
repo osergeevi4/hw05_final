@@ -40,10 +40,10 @@
         <div class="col-md-9">
 
                      {%if post %}
-                    {% include "post_item.html" with post=post %}
+                    {% include "includes/post_item.html" with post=post %}
                     {% endif %}
         {% if items %}
-        {% include "comments.html" %}
+        {% include "includes/comments.html" %}
         {% endif %}
      </div>
     </div>

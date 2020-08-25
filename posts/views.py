@@ -48,7 +48,7 @@ def add_comment(request, username, post_id):
         form.instance.post = post
         form.save()
         return redirect('post', username=username, post_id=post_id)
-    return render(request, 'comments.html', {'post': post, 'form': form})
+    return render(request, 'post.html', {'post': post, 'form': form})
 
 
 @login_required
@@ -85,7 +85,7 @@ def profile(request, username):
     paginator = Paginator(posts, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    following = Follow.objects.filter(user__username=user, author=author)
+    following = Follow.objects.filter(user__username=user, author=author).exists()
     return render(
         request,
         'profile.html', 

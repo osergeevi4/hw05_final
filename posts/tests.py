@@ -1,5 +1,6 @@
-import time
+import tempfile
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
@@ -57,12 +58,6 @@ class ProfileTest(TestCase):
         response = self.client.get('/404/')
         self.assertEqual(response.status_code, 404)
 
-    def test_cache(self):
-        self.post = Post.objects.create(text="Test cache", author=self.user)
-        time.sleep(20)
-        response = self.client.get(reverse("index"))
-        self.assertContains(response, text="Test cache", count=1)
-
 
 class TestUnauthorized(TestCase):
     def setUp(self):
@@ -80,10 +75,24 @@ class TestImage(TestCase):
         self.user = User.objects.create_user(username="testuser", password="123456")
         self.client.force_login(self.user)
         self.group = Group.objects.create(title='testgroup', slug='testgroup')
-        self.post = Post.objects.create(text='Test post', author=self.user, group=self.group, image='file.jpg')
+        self.post = Post.objects.create(
+            text='Test text',
+            author=self.user,
+            group=self.group,
+            image=SimpleUploadedFile(name='test.png',
+                                     content=open('test.png', 'rb').read(),
+                                     content_type='image/png')
+        )
+
+    def get_test_image_file():
+        from PIL import Image
+        img = Image.new('RGB', (60, 30), color=(73, 109, 137))
+        img.save('test.png')
+
+    get_test_image_file()
 
     def test_tag_post(self):
-        with open('C:/Users/Владелец/Pictures/pic/file.jpg', 'rb') as img:
+        with open('test.png', 'rb') as img:
             response_post = self.client.post(reverse('post', args=[self.user.username, self.post.id]),
                                        {'text': 'Test post with image', 'author': self.user, 'group': self.group,
                                         'image': img})
@@ -92,8 +101,9 @@ class TestImage(TestCase):
         self.assertIn('img', request_post.content.decode())
 
     def test_tag_pages(self):
-        with open('C:/Users/Владелец/Pictures/pic/file.jpg', 'rb') as img:
-            request_pr = self.client.post(reverse('profile', kwargs={'username': 'testuser'}), {'text': 'Text with img', 'image': img})
+        with open('test.png', 'rb') as img:
+            request_pr = self.client.post(reverse('profile', kwargs={'username': 'testuser'}),
+                                          {'text': 'Text with img', 'image': img})
             self.assertEqual(request_pr.status_code, 200)
             response_pr = self.client.get(reverse('profile', args=[self.user.username]))
             self.assertIn('img', response_pr.content.decode())
@@ -103,11 +113,17 @@ class TestImage(TestCase):
             self.assertIn('img', response_grp.content.decode())
 
     def test_not_upload(self):
-        with open('C:/Dev/text.txt', 'rb') as img:
-            request = self.client.post(reverse('post_edit', args=[self.user.username, self.post.id]), {'text': 'Test post with img', 'image': img}, follow=True)
-            self.assertEqual(request.status_code, 200)
-            response = self.client.get(reverse('post_edit', args=[self.user.username, self.post.id]), {'text': 'Test post with img', 'image': img})
-            self.assertNotIn('img', response.content.decode())
+        file = tempfile.NamedTemporaryFile(mode='w+t',
+                                           suffix=".txt",
+                                           delete=False)
+        file.writelines(['Text\n'])
+        file.seek(0)
+        with file as img:
+            request = self.client.post(reverse('post_edit', args=[self.user.username, self.post.id]),
+                                       {'text': 'Test post with img', 'image': img}, follow=True)
+            self.assertFormError(request, 'form', 'image', errors=('Загрузите правильное изображение. '
+                                                                   'Файл, который вы загрузили, '
+                                                                   'поврежден или не является изображением.'))
 
 
 class FollowTest(TestCase):
@@ -130,7 +146,9 @@ class FollowTest(TestCase):
     def test_auth_follow(self):
         response = self.auth_client.get(reverse('profile', args=[self.user2]))
         self.assertContains(response, text='Подписаться')
-        self.assertNotContains(response, text='Отписаться')
+        self.follow = Follow.objects.create(user=self.user1, author=self.user2)
+        response_unfollow = self.auth_client.get(reverse('profile', args=[self.user2]))
+        self.assertContains(response_unfollow, text='Отписаться')
 
     def test_follow_index(self):
         self.follow = Follow.objects.create(user=self.user1, author=self.user2)
@@ -150,10 +168,15 @@ class FollowTest(TestCase):
         self.assertEqual(response.status_code, 200, msg='Авторизуйтесь для возможности комментирования')
 
 
+class CacheTest(TestCase):
+    def setUp(self):
+        self.first_client = Client()
+        self.second_client = Client()
+        self.user = User.objects.create_user(username='golum', )
+        self.first_client.force_login(self.user)
 
-
-
-
-
-
-
+    def test_cache(self):
+        self.second_client.get(reverse('index'))
+        self.first_client.post(reverse('new_post'), {'text': 'Тест кэша'})
+        response = self.second_client.get(reverse('index'))
+        self.assertNotContains(response, 'Тест кэша')
