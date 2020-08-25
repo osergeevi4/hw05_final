@@ -48,7 +48,7 @@ def add_comment(request, username, post_id):
         form.instance.post = post
         form.save()
         return redirect('post', username=username, post_id=post_id)
-    return render(request, 'post.html', {'post': post, 'form': form})
+    return render(request, 'includes/comments.html', {'post': post, 'form': form})
 
 
 @login_required
@@ -125,3 +125,8 @@ def page_not_found(request, exception):
 
 def server_error(request):
     return render(request, "misc/500.html", status=500)
+
+
+def get_post_id(request, post_id):
+    post = get_object_or_404(Post, id=post_id)
+    return render(request, 'post.html', {'post': post})
