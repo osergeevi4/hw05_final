@@ -1,5 +1,7 @@
+import os
 import tempfile
 
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -9,6 +11,7 @@ from posts.models import Follow, Group, Post, User
 
 class ProfileTest(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
         self.user = User.objects.create_user(
             username='golum', password='123456'
@@ -61,6 +64,7 @@ class ProfileTest(TestCase):
 
 class TestUnauthorized(TestCase):
     def setUp(self):
+        cache.clear()
         self.unauthorized_client = Client()
 
     def test_redirect(self):
@@ -71,6 +75,7 @@ class TestUnauthorized(TestCase):
 
 class TestImage(TestCase):
     def setUp(self):
+        cache.clear()
         self.client = Client()
         self.user = User.objects.create_user(username="testuser", password="123456")
         self.client.force_login(self.user)
@@ -84,12 +89,14 @@ class TestImage(TestCase):
                                      content_type='image/png')
         )
 
-    def get_test_image_file():
+    def get_test_image_file(self):
         from PIL import Image
         img = Image.new('RGB', (60, 30), color=(73, 109, 137))
         img.save('test.png')
 
-    get_test_image_file()
+    def tearDown(self):
+        os.remove('media/posts/test.png')
+
 
     def test_tag_post(self):
         with open('test.png', 'rb') as img:
@@ -120,7 +127,7 @@ class TestImage(TestCase):
         file.seek(0)
         with file as img:
             request = self.client.post(reverse('post_edit', args=[self.user.username, self.post.id]),
-                                       {'text': 'Test post with img', 'image': img}, follow=True)
+                                       {'text': 'Test post not img', 'image': img}, follow=True)
             self.assertFormError(request, 'form', 'image', errors=('Загрузите правильное изображение. '
                                                                    'Файл, который вы загрузили, '
                                                                    'поврежден или не является изображением.'))
@@ -144,6 +151,7 @@ class FollowTest(TestCase):
         self.post3 = Post.objects.create(text='Test post3', author=self.user3)
 
     def test_auth_follow(self):
+        cache.clear()
         response = self.auth_client.get(reverse('profile', args=[self.user2]))
         self.assertContains(response, text='Подписаться')
         self.follow = Follow.objects.create(user=self.user1, author=self.user2)
@@ -151,12 +159,14 @@ class FollowTest(TestCase):
         self.assertContains(response_unfollow, text='Отписаться')
 
     def test_follow_index(self):
+        cache.clear()
         self.follow = Follow.objects.create(user=self.user1, author=self.user2)
         resp_follow_index = self.auth_client.get(reverse('follow_index'))
         self.assertContains(resp_follow_index, 'Test post')
         self.assertNotContains(resp_follow_index, self.post3)
 
     def test_auth_unauth_comment(self):
+        cache.clear()
         self.new_comment = 'It is new comment'
         response = self.auth_client.get(reverse('add_comment', args=[self.user2, self.post.id]))
         self.assertEqual(response.status_code, 200)
