@@ -87,8 +87,7 @@ def profile(request, username):
     page = paginator.get_page(page_number)
     following = Follow.objects.filter(user__username=user, author=author).exists()
     return render(
-        request,
-        'includes/profile.html',
+        request, 'profile.html',
         {'author': author, 'page': page,
          'paginator': paginator, 'following': following}
     )
