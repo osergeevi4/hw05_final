@@ -9,12 +9,8 @@
                 {% include "includes/author_card.html" with author=author post=post %}
         </div>
         <div class="col-md-9">
-            {% if post %}
             {% include "includes/post_item.html" with post=post %}
-            {% endif %}
-            {% if items %}
             {% include "includes/comments.html" %}
-            {% endif %}
         </div>
     </div>
 </main>

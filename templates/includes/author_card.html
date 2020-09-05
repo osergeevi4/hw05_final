@@ -20,10 +20,11 @@
                     <li class="list-group-item">
                         <div class="h6 text-muted">
                             <!-- Количество записей -->
-                            {{ author.posts.count }}
+                            Постов: {{ author.posts.count }}
 
                         </div>
                     </li>
+                    {% if user.is_authenticated %}
                     {% if request.user != author %}
                         <li class="list-group-item">
                             {% if following %}
@@ -38,6 +39,7 @@
                                 </a>
                             {% endif %}
                         </li>
+                    {% endif %}
                     {% endif %}
                 </ul>
             </div>

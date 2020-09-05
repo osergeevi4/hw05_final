@@ -3,15 +3,13 @@ from datetime import datetime
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.cache import cache_page
 
 from .forms import PostForm, CommentForm
 from .models import Comment, Follow, Group, Post, User
 
 
-@cache_page(60 * 15)
 def index(request):
-    post_list = Post.objects.prefetch_related('author', 'group').all()
+    post_list = Post.objects.select_related('author', 'group').all()
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
@@ -46,6 +44,7 @@ def add_comment(request, username, post_id):
     if form.is_valid():
         form.instance.author = request.user
         form.instance.post = post
+        form.instance.created = datetime.now()
         form.save()
         return redirect('post', username=username, post_id=post_id)
     return render(request, 'includes/comments.html', {'post': post, 'form': form})
@@ -57,7 +56,7 @@ def follow_index(request):
     paginator = Paginator(post_list, 10)
     page_number = request.GET.get('page')
     page = paginator.get_page(page_number)
-    return render(request, 'index.html',
+    return render(request, 'follow.html',
                   {'page': page, 'paginator': paginator})
 
 
@@ -103,7 +102,10 @@ def post_view(request, username, post_id):
 
 def post_edit(request, username, post_id):
     post = get_object_or_404(Post, author__username=username, id=post_id)
-    form = PostForm(request.POST or None, files=request.FILES or None)
+    form = PostForm(request.POST or None,
+                    files=request.FILES or None,
+                    instance=post
+                    )
     if form.is_valid():
         form.instance.author = request.user
         form.instance.id = post_id

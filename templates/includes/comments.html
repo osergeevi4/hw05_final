@@ -1,6 +1,5 @@
 {% block content %}
 {% load user_filters %}
-
 <head>
     {% load static %}
     <link rel="stylesheet" href="{% static 'bootstrap/dist/css/bootstrap.min.css' %}">
@@ -26,21 +25,23 @@
     </div>
 </form>
 </div>
-    {% for item in items %}
-<div class="media mb-4">
-<div class="media-body">
+{% else %}
+    <h5 class="card-header"><center>Авторизуйтесь для возможности комментирования.</center></h5>
+{% endif %}
+
+{% for item in items %}
+<div class="card mb-3 mt-1 shadow-sm">
+<div class="card-body">
     <h5 class="mt-0">
     <a
         href="{% url 'profile' item.author.username %}"
         name="comment_{{ item.id }}"
-        >{{ item.author.username }}
-    </a> <small class="text-muted">{{ item.created }}</small>
+        >{{ item.author.username }}</a>
+        <small class="text-muted">{{ item.created }}</small>
     </h5>
     {{ item.text }}
-
 </div>
 </div>
 {% endfor %}
-{% endif %}
 
 {% endblock %}
